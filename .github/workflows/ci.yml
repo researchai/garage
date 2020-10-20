@@ -38,7 +38,7 @@ jobs:
         run: echo ${{ secrets.CI_REGISTRY_TOKEN }} | docker login docker.pkg.github.com -u gitanshu --password-stdin
       - name: Build Docker container
         run: |
-          docker build . \
+          DOCKER_BUILDKIT=1 docker build . \
             -f docker/Dockerfile \
             --target garage-dev \
             -t "${DOCKER_TAG}" \

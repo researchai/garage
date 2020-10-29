@@ -85,6 +85,7 @@ and how to implement new MDPs and new algorithms.
    user/writing_documentation
    user/git_workflow
    user/preparing_a_pr
+   user/docker_dev
 
 .. toctree::
    :caption: API Reference

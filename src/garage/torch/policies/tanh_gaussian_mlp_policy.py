@@ -87,19 +87,18 @@ class TanhGaussianMLPPolicy(StochasticPolicy):
             layer_normalization=layer_normalization,
             normal_distribution_cls=TanhNormal)
 
-    def forward(self, observations):
+    def forward(self, policy_input):
         """Compute the action distributions from the observations.
 
         Args:
-            observations (torch.Tensor): Batch of observations on default
-                torch device.
+            policy_input (PolicyInput): Datatype containing observations.
 
         Returns:
             torch.distributions.Distribution: Batch distribution of actions.
-            dict[str, torch.Tensor]: Additional agent_info, as torch Tensors
-
+            dict[str, torch.Tensor]: Additional agent_info, as torch Tensors.
+                Do not need to be detached, and can be on any device.
         """
-        dist = self._module(observations)
+        dist = self._module(policy_input.observations)
         ret_mean = dist.mean.cpu()
         ret_log_std = (dist.variance.sqrt()).log().cpu()
         return dist, dict(mean=ret_mean, log_std=ret_log_std)

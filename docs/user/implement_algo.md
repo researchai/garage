@@ -195,6 +195,7 @@ import numpy as np
 
 from garage.samplers import LocalSampler
 from garage.np import discount_cumsum
+from garage.torch import PolicyMode, PolicyInput
 
 class SimpleVPG:
 
@@ -220,7 +221,9 @@ class SimpleVPG:
             returns = torch.Tensor(returns_numpy.copy())
             obs = torch.Tensor(path['observations'])
             actions = torch.Tensor(path['actions'])
-            dist = self.policy(obs)[0]
+            policy_input = PolicyInput(PolicyMode.FULL, obs,
+                                       lengths=[len(path)])
+            dist = self.policy(policy_input)[0]
             log_likelihoods = dist.log_prob(actions)
             loss = (-log_likelihoods * returns).mean()
             loss.backward()

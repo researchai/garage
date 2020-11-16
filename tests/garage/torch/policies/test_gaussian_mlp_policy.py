@@ -7,6 +7,7 @@ import torch
 from torch import nn
 
 from garage.envs import GymEnv
+from garage.torch import PolicyInput, PolicyMode
 from garage.torch.policies import GaussianMLPPolicy
 
 # yapf: Disable
@@ -37,7 +38,8 @@ class TestGaussianMLPPolicies:
                                    hidden_w_init=nn.init.ones_,
                                    output_w_init=nn.init.ones_)
 
-        dist = policy(obs)[0]
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs)
+        dist = policy(policy_input)[0]
 
         expected_mean = torch.full(
             (act_dim, ),

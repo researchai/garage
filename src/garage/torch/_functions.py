@@ -11,6 +11,8 @@ This collection of functions can be used to manage the following:
 """
 import copy
 import dataclasses
+import math
+import warnings
 
 import akro
 import torch
@@ -134,7 +136,7 @@ def filter_valids(tensor, valids):
     return [tensor[i][:valid] for i, valid in enumerate(valids)]
 
 
-def np_to_torch(array):
+def as_torch(array):
     """Numpy arrays to PyTorch tensors.
 
     Args:
@@ -144,10 +146,10 @@ def np_to_torch(array):
         torch.Tensor: float tensor on the global device.
 
     """
-    return torch.from_numpy(array).float().to(global_device())
+    return torch.as_tensor(array).float().to(global_device())
 
 
-def dict_np_to_torch(array_dict):
+def as_torch_dict(array_dict):
     """Convert a dict whose values are numpy arrays to PyTorch tensors.
 
     Modifies array_dict in place.
@@ -160,7 +162,7 @@ def dict_np_to_torch(array_dict):
 
     """
     for key, value in array_dict.items():
-        array_dict[key] = np_to_torch(value)
+        array_dict[key] = as_torch(value)
     return array_dict
 
 
@@ -401,3 +403,90 @@ class TransposeImage(Wrapper):
         env_step = super().step(action)
         obs = env_step.observation.transpose(2, 0, 1)
         return dataclasses.replace(env_step, observation=obs)
+
+
+def output_height_2d(layer, height):
+    """Compute the output height of a torch.nn.Conv2d, assuming NCHW format.
+
+    This requires knowing the input height. Because NCHW format makes this very
+    easy to mix up, this is a seperate function from conv2d_output_height.
+
+    It also works on torch.nn.MaxPool2d.
+
+    This function implements the formula described in the torch.nn.Conv2d
+    documentation:
+    https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+
+    Args:
+        layer (torch.nn.Conv2d): The layer to compute output size for.
+        height (int): The height of the input image.
+
+    Returns:
+        int: The height of the output image.
+
+    """
+    assert isinstance(layer, (torch.nn.Conv2d, torch.nn.MaxPool2d))
+    return math.floor((height + 2 * layer.padding[0] - layer.dilation[0] *
+                       (layer.kernel_size[0] - 1) - 1) / layer.stride[0] + 1)
+
+
+def output_width_2d(layer, width):
+    """Compute the output width of a torch.nn.Conv2d, assuming NCHW format.
+
+    This requires knowing the input width. Because NCHW format makes this very
+    easy to mix up, this is a seperate function from conv2d_output_height.
+
+    It also works on torch.nn.MaxPool2d.
+
+    This function implements the formula described in the torch.nn.Conv2d
+    documentation:
+    https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+
+    Args:
+        layer (torch.nn.Conv2d): The layer to compute output size for.
+        width (int): The width of the input image.
+
+    Returns:
+        int: The width of the output image.
+
+    """
+    assert isinstance(layer, (torch.nn.Conv2d, torch.nn.MaxPool2d))
+    return math.floor((width + 2 * layer.padding[1] - layer.dilation[1] *
+                       (layer.kernel_size[1] - 1) - 1) / layer.stride[1] + 1)
+
+
+def expand_var(name, item, n_expected, reference):
+    """Expand a variable to an expected length.
+
+    This is used to handle arguments to primitives that can all be reasonably
+    set to the same value, or multiple different values.
+
+    Args:
+        name (str): Name of variable being expanded.
+        item (any): Element being expanded.
+        n_expected (int): Number of elements expected.
+        reference (str): Source of n_expected.
+
+    Returns:
+        list: List of references to item or item itself.
+
+    Raises:
+        ValueError: If the variable is a sequence but length of the variable
+            is not 1 or n_expected.
+
+    """
+    if n_expected == 1:
+        warnings.warn(
+            f'Providing a {reference} of length 1 prevents {name} from '
+            f'being expanded.')
+    if isinstance(item, (list, tuple)):
+        if len(item) == n_expected:
+            return item
+        elif len(item) == 1:
+            return list(item) * n_expected
+        else:
+            raise ValueError(
+                f'{name} is length {len(item)} but should be length '
+                f'{n_expected} to match {reference}')
+    else:
+        return [item] * n_expected

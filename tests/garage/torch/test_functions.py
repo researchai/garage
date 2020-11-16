@@ -5,14 +5,9 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from garage.torch import (compute_advantages,
-                          dict_np_to_torch,
-                          flatten_to_single_vector,
-                          global_device,
-                          pad_to_last,
-                          product_of_gaussians,
-                          set_gpu_mode,
-                          torch_to_np,
+from garage.torch import (as_torch_dict, compute_advantages,
+                          flatten_to_single_vector, global_device, pad_to_last,
+                          product_of_gaussians, set_gpu_mode, torch_to_np,
                           TransposeImage)
 import garage.torch._functions as tu
 
@@ -59,10 +54,10 @@ def test_torch_to_np():
     assert isinstance(np_out_2, np.ndarray)
 
 
-def test_dict_np_to_torch():
+def test_as_torch_dict():
     """Test if dict whose values are tensors can be converted to np arrays."""
     dic = {'a': np.zeros(1), 'b': np.ones(1)}
-    dict_np_to_torch(dic)
+    as_torch_dict(dic)
     for tensor in dic.values():
         assert isinstance(tensor, torch.Tensor)
 

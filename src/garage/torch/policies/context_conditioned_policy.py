@@ -10,7 +10,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from garage.torch import global_device, product_of_gaussians
+from garage.torch import (global_device, PolicyInput, PolicyMode,
+                          product_of_gaussians)
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -184,7 +185,8 @@ class ContextConditionedPolicy(nn.Module):
 
         # run policy, get log probs and new actions
         obs_z = torch.cat([obs, task_z.detach()], dim=1)
-        dist = self._policy(obs_z)[0]
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs_z)
+        dist = self._policy(policy_input)[0]
         pre_tanh, actions = dist.rsample_with_pre_tanh_value()
         log_pi = dist.log_prob(value=actions, pre_tanh_value=pre_tanh)
         log_pi = log_pi.unsqueeze(1)

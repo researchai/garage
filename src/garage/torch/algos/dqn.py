@@ -11,7 +11,7 @@ from garage import _Default, log_performance, make_optimizer
 from garage._functions import obtain_evaluation_episodes
 from garage.np.algos import RLAlgorithm
 from garage.sampler import FragmentWorker
-from garage.torch import global_device, np_to_torch
+from garage.torch import as_torch, global_device
 
 
 class DQN(RLAlgorithm):
@@ -240,12 +240,12 @@ class DQN(RLAlgorithm):
             qval: Q-value predicted by the Q-network.
 
         """
-        observations = np_to_torch(timesteps.observations)
-        rewards = np_to_torch(timesteps.rewards).reshape(-1, 1)
+        observations = as_torch(timesteps.observations)
+        rewards = as_torch(timesteps.rewards).reshape(-1, 1)
         rewards *= self._reward_scale
-        actions = np_to_torch(timesteps.actions)
-        next_observations = np_to_torch(timesteps.next_observations)
-        terminals = np_to_torch(timesteps.terminals).reshape(-1, 1)
+        actions = as_torch(timesteps.actions)
+        next_observations = as_torch(timesteps.next_observations)
+        terminals = as_torch(timesteps.terminals).reshape(-1, 1)
 
         next_inputs = next_observations
         inputs = observations

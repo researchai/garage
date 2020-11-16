@@ -10,7 +10,7 @@ from garage.envs import GymEnv, normalize
 from garage.experiment import deterministic
 from garage.replay_buffer import PathBuffer
 from garage.sampler import LocalSampler
-from garage.torch import set_gpu_mode
+from garage.torch import PolicyInput, PolicyMode, set_gpu_mode
 from garage.torch.algos import SAC
 from garage.torch.policies import TanhGaussianMLPPolicy
 from garage.torch.q_functions import ContinuousMLPQFunction
@@ -138,7 +138,8 @@ def testActorLoss():
               gradient_steps_per_itr=1)
 
     observations = torch.Tensor([[1., 2.], [3., 4.]])
-    action_dists = policy(observations)[0]
+    policy_input = PolicyInput(PolicyMode.SHUFFLED, observations)
+    action_dists = policy(policy_input)[0]
     actions = torch.Tensor(action_dists.rsample_with_pre_tanh_value())
     samples_data = dict(observation=observations)
     log_pi = action_dists.log_prob(actions)
@@ -165,7 +166,8 @@ def testTemperatureLoss():
               optimizer=MagicMock,
               gradient_steps_per_itr=1)
     observations = torch.Tensor([[1., 2.], [3., 4.]])
-    action_dists = policy(observations)[0]
+    policy_input = PolicyInput(PolicyMode.SHUFFLED, observations)
+    action_dists = policy(policy_input)[0]
     actions = action_dists.rsample_with_pre_tanh_value()
     log_pi = action_dists.log_prob(actions)
     samples_data = dict(observation=observations, action=actions)

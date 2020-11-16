@@ -1,6 +1,7 @@
 """Trust Region Policy Optimization."""
 import torch
 
+from garage.torch import PolicyInput, PolicyMode
 from garage.torch.algos import VPG
 from garage.torch.optimizers import (ConjugateGradientOptimizer,
                                      OptimizerWrapper)
@@ -102,10 +103,11 @@ class TRPO(VPG):
                 with shape :math:`(N \dot [T], )`.
 
         """
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs)
         with torch.no_grad():
-            old_ll = self._old_policy(obs)[0].log_prob(actions)
+            old_ll = self._old_policy(policy_input)[0].log_prob(actions)
 
-        new_ll = self.policy(obs)[0].log_prob(actions)
+        new_ll = self.policy(policy_input)[0].log_prob(actions)
         likelihood_ratio = (new_ll - old_ll).exp()
 
         # Calculate surrogate

@@ -10,7 +10,7 @@ from garage import (_Default, log_performance, make_optimizer,
                     obtain_evaluation_episodes)
 from garage.np.algos import RLAlgorithm
 from garage.sampler import FragmentWorker, LocalSampler
-from garage.torch import dict_np_to_torch, torch_to_np
+from garage.torch import as_torch_dict, torch_to_np
 
 # yapf: enable
 
@@ -229,7 +229,7 @@ class DDPG(RLAlgorithm):
             qval: Q-value predicted by the Q-network.
 
         """
-        transitions = dict_np_to_torch(samples_data)
+        transitions = as_torch_dict(samples_data)
 
         observations = transitions['observations']
         rewards = transitions['rewards'].reshape(-1, 1)

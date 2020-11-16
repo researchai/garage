@@ -11,7 +11,8 @@ from garage import log_performance
 from garage.np import discount_cumsum
 from garage.np.algos import RLAlgorithm
 from garage.sampler import RaySampler
-from garage.torch import compute_advantages, filter_valids
+from garage.torch import (compute_advantages, filter_valids, PolicyInput,
+                          PolicyMode)
 from garage.torch.optimizers import OptimizerWrapper
 
 
@@ -394,10 +395,11 @@ class VPG(RLAlgorithm):
                 (float).
 
         """
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs)
         with torch.no_grad():
-            old_dist = self._old_policy(obs)[0]
+            old_dist = self._old_policy(policy_input)[0]
 
-        new_dist = self.policy(obs)[0]
+        new_dist = self.policy(policy_input)[0]
 
         kl_constraint = torch.distributions.kl.kl_divergence(
             old_dist, new_dist)
@@ -418,11 +420,12 @@ class VPG(RLAlgorithm):
                 with shape :math:`(N, P)`.
 
         """
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs)
         if self._stop_entropy_gradient:
             with torch.no_grad():
-                policy_entropy = self.policy(obs)[0].entropy()
+                policy_entropy = self.policy(policy_input)[0].entropy()
         else:
-            policy_entropy = self.policy(obs)[0].entropy()
+            policy_entropy = self.policy(policy_input)[0].entropy()
 
         # This prevents entropy from becoming negative for small policy std
         if self._use_softplus_entropy:
@@ -449,6 +452,7 @@ class VPG(RLAlgorithm):
 
         """
         del rewards
-        log_likelihoods = self.policy(obs)[0].log_prob(actions)
+        policy_input = PolicyInput(PolicyMode.SHUFFLED, obs)
+        log_likelihoods = self.policy(policy_input)[0].log_prob(actions)
 
         return log_likelihoods * advantages

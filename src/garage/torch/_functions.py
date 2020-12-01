@@ -10,14 +10,12 @@ This collection of functions can be used to manage the following:
     - Updating model parameters
 """
 import copy
-import dataclasses
+import math
+import warnings
 
-import akro
 import torch
 from torch import nn
 import torch.nn.functional as F
-
-from garage import EnvSpec, Wrapper
 
 _USE_GPU = False
 _DEVICE = None
@@ -370,34 +368,116 @@ class NonLinearity(nn.Module):
         return repr(self.module)
 
 
-class TransposeImage(Wrapper):
-    """Transpose observation space for image observation in PyTorch.
+def _value_at_axis(value, axis):
+    """Get the value for a particular axis.
 
-    Reshape the input observation shape from (H, W, C) into (C, H, W)
-        in pytorch format.
+    Args:
+        value (tuple or list or int): Possible tuple of per-axis values.
+        axis (int): Axis to get value for.
+
+    Returns:
+        int: the value at the available axis.
+
     """
+    if not isinstance(value, (list, tuple)):
+        return value
+    if len(value) == 1:
+        return value[0]
+    else:
+        return value[axis]
 
-    @property
-    def observation_space(self):
-        """akro.Space: The observation space specification."""
-        obs_shape = self._env.observation_space.shape
-        return akro.Image((obs_shape[2], obs_shape[1], obs_shape[0]))
 
-    @property
-    def spec(self):
-        """EnvSpec: The environment specification."""
-        return EnvSpec(self.observation_space, self._env.spec.action_space)
+def output_height_2d(layer, height):
+    """Compute the output height of a torch.nn.Conv2d, assuming NCHW format.
 
-    def step(self, action):
-        """Step the wrapped env.
+    This requires knowing the input height. Because NCHW format makes this very
+    easy to mix up, this is a seperate function from conv2d_output_height.
 
-        Args:
-            action (np.ndarray): An action provided by the agent.
+    It also works on torch.nn.MaxPool2d.
 
-        Returns:
-            EnvStep: The environment step resulting from the action.
+    This function implements the formula described in the torch.nn.Conv2d
+    documentation:
+    https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
 
-        """
-        env_step = super().step(action)
-        obs = env_step.observation.transpose(2, 0, 1)
-        return dataclasses.replace(env_step, observation=obs)
+    Args:
+        layer (torch.nn.Conv2d): The layer to compute output size for.
+        height (int): The height of the input image.
+
+    Returns:
+        int: The height of the output image.
+
+    """
+    assert isinstance(layer, (torch.nn.Conv2d, torch.nn.MaxPool2d))
+    padding = _value_at_axis(layer.padding, 0)
+    dilation = _value_at_axis(layer.dilation, 0)
+    kernel_size = _value_at_axis(layer.kernel_size, 0)
+    stride = _value_at_axis(layer.stride, 0)
+    return math.floor((height + 2 * padding - dilation *
+                       (kernel_size - 1) - 1) / stride + 1)
+
+
+def output_width_2d(layer, width):
+    """Compute the output width of a torch.nn.Conv2d, assuming NCHW format.
+
+    This requires knowing the input width. Because NCHW format makes this very
+    easy to mix up, this is a seperate function from conv2d_output_height.
+
+    It also works on torch.nn.MaxPool2d.
+
+    This function implements the formula described in the torch.nn.Conv2d
+    documentation:
+    https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+
+    Args:
+        layer (torch.nn.Conv2d): The layer to compute output size for.
+        width (int): The width of the input image.
+
+    Returns:
+        int: The width of the output image.
+
+    """
+    assert isinstance(layer, (torch.nn.Conv2d, torch.nn.MaxPool2d))
+
+    padding = _value_at_axis(layer.padding, 1)
+    dilation = _value_at_axis(layer.dilation, 1)
+    kernel_size = _value_at_axis(layer.kernel_size, 1)
+    stride = _value_at_axis(layer.stride, 1)
+    return math.floor((width + 2 * padding - dilation *
+                       (kernel_size - 1) - 1) / stride + 1)
+
+
+def expand_var(name, item, n_expected, reference):
+    """Expand a variable to an expected length.
+
+    This is used to handle arguments to primitives that can all be reasonably
+    set to the same value, or multiple different values.
+
+    Args:
+        name (str): Name of variable being expanded.
+        item (any): Element being expanded.
+        n_expected (int): Number of elements expected.
+        reference (str): Source of n_expected.
+
+    Returns:
+        list: List of references to item or item itself.
+
+    Raises:
+        ValueError: If the variable is a sequence but length of the variable
+            is not 1 or n_expected.
+
+    """
+    if n_expected == 1:
+        warnings.warn(
+            f'Providing a {reference} of length 1 prevents {name} from '
+            f'being expanded.')
+    if isinstance(item, (list, tuple)):
+        if len(item) == n_expected:
+            return item
+        elif len(item) == 1:
+            return list(item) * n_expected
+        else:
+            raise ValueError(
+                f'{name} is length {len(item)} but should be length '
+                f'{n_expected} to match {reference}')
+    else:
+        return [item] * n_expected

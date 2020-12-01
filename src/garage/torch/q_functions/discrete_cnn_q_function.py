@@ -1,4 +1,5 @@
 """Discrete CNN Q Function."""
+import akro
 import torch
 from torch import nn
 
@@ -16,6 +17,9 @@ class DiscreteCNNQFunction(DiscreteCNNModule):
 
     Args:
         env_spec (EnvSpec): Environment specification.
+        image_format (str): Either 'NCHW' or 'NHWC'. Should match the input
+            specification. Gym uses NHWC by default, but PyTorch uses NCHW by
+            default.
         kernel_sizes (tuple[int]): Dimension of the conv filters.
             For example, (3, 5) means there are two convolutional layers.
             The filter for first layer is of dimension (3 x 3)
@@ -62,11 +66,11 @@ class DiscreteCNNQFunction(DiscreteCNNModule):
             of output dense layer(s). The function should return a
             torch.Tensor.
         layer_normalization (bool): Bool for using layer normalization or not.
-        is_image (bool): If true, the inputs are normalized by dividing by 255.
     """
 
     def __init__(self,
                  env_spec,
+                 image_format,
                  kernel_sizes,
                  hidden_channels,
                  strides,
@@ -83,14 +87,13 @@ class DiscreteCNNQFunction(DiscreteCNNModule):
                  output_nonlinearity=None,
                  output_w_init=nn.init.xavier_uniform_,
                  output_b_init=nn.init.zeros_,
-                 layer_normalization=False,
-                 is_image=True):
+                 layer_normalization=False):
 
         self._env_spec = env_spec
-        input_shape = (1, ) + env_spec.observation_space.shape
         output_dim = env_spec.action_space.flat_dim
-        super().__init__(input_shape=input_shape,
+        super().__init__(input_shape=env_spec.observation_space.shape,
                          output_dim=output_dim,
+                         image_format=image_format,
                          kernel_sizes=kernel_sizes,
                          strides=strides,
                          hidden_sizes=hidden_sizes,
@@ -107,8 +110,7 @@ class DiscreteCNNQFunction(DiscreteCNNModule):
                          output_nonlinearity=output_nonlinearity,
                          output_w_init=output_w_init,
                          output_b_init=output_b_init,
-                         layer_normalization=layer_normalization,
-                         is_image=is_image)
+                         layer_normalization=layer_normalization)
 
     # pylint: disable=arguments-differ
     def forward(self, observations):
@@ -126,4 +128,6 @@ class DiscreteCNNQFunction(DiscreteCNNModule):
             obs_shape = ((len(observations), ) +
                          self._env_spec.observation_space.shape)
             observations = observations.reshape(obs_shape)
+        if isinstance(self._env_spec.observation_space, akro.Image):
+            observations = torch.div(observations, 255.0)
         return super().forward(observations)

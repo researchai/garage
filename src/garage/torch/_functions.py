@@ -134,7 +134,7 @@ def filter_valids(tensor, valids):
     return [tensor[i][:valid] for i, valid in enumerate(valids)]
 
 
-def np_to_torch(array):
+def as_torch(array):
     """Numpy arrays to PyTorch tensors.
 
     Args:
@@ -144,10 +144,10 @@ def np_to_torch(array):
         torch.Tensor: float tensor on the global device.
 
     """
-    return torch.from_numpy(array).float().to(global_device())
+    return torch.as_tensor(array).float().to(global_device())
 
 
-def dict_np_to_torch(array_dict):
+def as_torch_dict(array_dict):
     """Convert a dict whose values are numpy arrays to PyTorch tensors.
 
     Modifies array_dict in place.
@@ -160,7 +160,7 @@ def dict_np_to_torch(array_dict):
 
     """
     for key, value in array_dict.items():
-        array_dict[key] = np_to_torch(value)
+        array_dict[key] = as_torch(value)
     return array_dict
 
 

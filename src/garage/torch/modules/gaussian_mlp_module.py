@@ -6,6 +6,7 @@ from torch import nn
 from torch.distributions import Normal
 from torch.distributions.independent import Independent
 
+from garage.torch import global_device
 from garage.torch.distributions import TanhNormal
 from garage.torch.modules.mlp_module import MLPModule
 from garage.torch.modules.multi_headed_mlp_module import MultiHeadedMLPModule
@@ -123,9 +124,10 @@ class GaussianMLPBaseModule(nn.Module):
 
         init_std_param = torch.Tensor([init_std]).log()
         if self._learn_std:
-            self._init_std = torch.nn.Parameter(init_std_param)
+            self._init_std = torch.nn.Parameter(init_std_param).to(
+                global_device())
         else:
-            self._init_std = init_std_param
+            self._init_std = init_std_param.to(global_device())
             self.register_buffer('init_std', self._init_std)
 
         self._min_std_param = self._max_std_param = None
